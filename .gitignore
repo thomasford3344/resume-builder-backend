@@ -2,7 +2,7 @@
 /dist
 /node_modules
 /build
-/uploads/resumes/**
+/uploads/resumes/*.json
 
 # Logs
 logs
