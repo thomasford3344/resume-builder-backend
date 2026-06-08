@@ -17,9 +17,9 @@ export class AuthService {
     const user = await this.usersService.find({ email });
 
     // Generating password
-    const salt = await bcrypt.genSalt(10);
-    const password = await bcrypt.hash("JINjinge627~", salt);
-    console.log("password: ", password);
+    // const salt = await bcrypt.genSalt(10);
+    // const password = await bcrypt.hash("JINjinge627~", salt);
+    // console.log("password: ", password);
     if (user && (await bcrypt.compare(pass, user.password))) {
       return {
         _id: user._id,
