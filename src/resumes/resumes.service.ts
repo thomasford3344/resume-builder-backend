@@ -3004,15 +3004,10 @@ CANDIDATE_BACKGROUND:
       if (filters.startDate || filters.endDate) {
         query.createdAt = {};
         if (filters.startDate) {
-          const startOfDay = new Date(filters.startDate);
-          startOfDay.setUTCHours(0, 0, 0, 0);
-          query.createdAt.$gte = startOfDay;
+          query.createdAt.$gte = new Date(filters.startDate);
         }
         if (filters.endDate) {
-          // Set end date to end of day
-          const endOfDay = new Date(filters.endDate);
-          endOfDay.setUTCHours(23, 59, 59, 999);
-          query.createdAt.$lte = endOfDay;
+          query.createdAt.$lte = new Date(filters.endDate);
         }
       }
     }
