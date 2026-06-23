@@ -49,6 +49,8 @@ export class ResumesService {
     userTemplate?: string,
     conversationId?: string,
     status: string = 'completed',
+    aiModel?: string,
+    aiVersion?: string,
   ) {
     // Generate unique filename
     const timestamp = Date.now();
@@ -71,6 +73,8 @@ export class ResumesService {
       jsonFilePath: jsonFilePath,
       conversationId: conversationId,
       status: status,
+      aiModel,
+      aiVersion,
     });
 
     const savedResume = await resume.save();
@@ -86,6 +90,8 @@ export class ResumesService {
     companyName: string,
     roleType: string,
     jobDescription: string,
+    aiModel?: string,
+    aiVersion?: string,
   ) {
     const resume = new this.resumeModel({
       userId,
@@ -93,6 +99,8 @@ export class ResumesService {
       roleType,
       jobDescription,
       status: 'in_progress',
+      aiModel,
+      aiVersion,
     });
 
     const savedResume = await resume.save();
@@ -2740,6 +2748,8 @@ CANDIDATE_BACKGROUND:
     const { resumeJson, threadId } = await this.openAIService.generateResume(
       resume.jobDescription,
       instructions,
+      (resume.aiModel as 'openai' | 'claude') || 'openai',
+      resume.aiVersion || 'gpt-4.1-mini',
     );
 
     // Extract cover letter from resume JSON and remove it from the JSON
@@ -2865,6 +2875,8 @@ CANDIDATE_BACKGROUND:
     resumeJson: Record<string, any>,
     jobDescription: string,
     userId: string,
+    aiModel?: string,
+    aiVersion?: string,
   ): Promise<Array<{ question: string; answer: string }>> {
     // Get user to check for custom questions prompt
     const user = await this.userModel.findById(userId).exec();
@@ -2881,6 +2893,8 @@ CANDIDATE_BACKGROUND:
       resumeJson,
       jobDescription,
       questionsPrompt,
+      (aiModel as 'openai' | 'claude') || 'openai',
+      aiVersion || 'gpt-4.1-mini',
     );
   }
 

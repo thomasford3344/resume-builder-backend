@@ -26,6 +26,16 @@ export class Resume {
   @Prop({ required: true })
   jobDescription: string;
 
+  @Prop({
+    required: false,
+    enum: ['openai', 'claude'],
+    default: 'openai',
+  })
+  aiModel?: string;
+
+  @Prop({ required: false, default: 'gpt-4.1-mini' })
+  aiVersion?: string;
+
   @Prop({ required: false })
   jsonFilePath?: string;
 
