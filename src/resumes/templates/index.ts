@@ -2,6 +2,7 @@ export { ResumePDFTemplate1 } from './template_1';
 export { ResumePDFTemplate2 } from './template_2';
 export { ResumePDFTemplate3 } from './template_3';
 export { ResumePDFTemplate4 } from './template_4';
+export { ResumePDFTemplate5 } from './template_5';
 // Export other templates here as you create them
 // export { ResumePDFTemplate2 } from './template_2';
 
