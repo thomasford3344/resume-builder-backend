@@ -15,7 +15,6 @@ import {
   ResumePDFTemplate2,
   ResumePDFTemplate3,
   ResumePDFTemplate4,
-  ResumePDFTemplate5,
 } from './templates';
 import { OpenAIService } from '../openai/openai.service';
 
@@ -2963,9 +2962,6 @@ CANDIDATE_BACKGROUND:
       return template.generate();
     } else if (templateName === 'template4') {
       const template = new ResumePDFTemplate4(data);
-      return template.generate();
-    } else if (templateName === 'template5') {
-      const template = new ResumePDFTemplate5(data);
       return template.generate();
     }
 

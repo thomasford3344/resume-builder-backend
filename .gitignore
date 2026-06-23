@@ -2,7 +2,7 @@
 /dist
 /node_modules
 /build
-/uploads/resumes/*.json
+/uploads/resumes/**
 
 # Logs
 logs
@@ -55,3 +55,5 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+uploads
