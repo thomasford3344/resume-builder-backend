@@ -104,8 +104,6 @@ export class ResumesController {
         generateResumeDto.companyName,
         generateResumeDto.roleType,
         generateResumeDto.jobDescription,
-        generateResumeDto.aiModel,
-        generateResumeDto.aiVersion,
       );
 
       // Send resume ID immediately so frontend can redirect
@@ -170,8 +168,6 @@ export class ResumesController {
       req.user.template,
       undefined,
       'completed',
-      fromJsonDto.aiModel,
-      fromJsonDto.aiVersion,
     );
     const sanitizedName = userName
       .replace(/[^a-zA-Z0-9\s-]/g, '')
@@ -221,8 +217,6 @@ export class ResumesController {
       resumeJson,
       resume.jobDescription,
       req.user._id,
-      resume.aiModel,
-      resume.aiVersion,
     );
 
     if (qaPairs.length === 0) {

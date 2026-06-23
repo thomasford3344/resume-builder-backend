@@ -1,18 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
 import { ResumeData } from 'src/resumes/templates';
-import {
-  type AiProvider,
-  resolveApiModelId,
-} from '../ai/ai-models';
-import { RESUME_JSON_SCHEMA } from '../ai/resume-json-schema';
 
 @Injectable()
 export class OpenAIService {
   private client: OpenAI;
-  private anthropicClient: Anthropic | null = null;
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('openai.apiKey');
@@ -22,49 +15,245 @@ export class OpenAIService {
     this.client = new OpenAI({
       apiKey: apiKey,
     });
-
-    const anthropicApiKey = this.configService.get<string>('anthropic.apiKey');
-    if (anthropicApiKey) {
-      this.anthropicClient = new Anthropic({
-        apiKey: anthropicApiKey,
-      });
-    }
   }
 
+  /**
+   * Clean text by removing double spaces and newline breaks to save tokens
+   * @param text The text to clean
+   * @returns Cleaned text with single spaces, no newlines
+   */
   private cleanText(text: string): string {
-    return text.replace(/\s+/g, ' ').trim();
+    return text
+      .replace(/\s+/g, ' ') // Replace all whitespace (spaces, tabs, newlines) with single space
+      .trim(); // Remove leading/trailing whitespace
   }
 
+  /**
+   * Generate a resume JSON based on job description and instructions
+   * @param jobDescription The job description
+   * @param instructions Additional instructions for resume generation
+   * @returns Object containing the generated resume JSON and conversation ID for tracking
+   */
   async generateResume(
     jobDescription: string,
     userInstructions: string,
-    aiProvider: AiProvider = 'openai',
-    aiVersion: string = 'gpt-4.1-mini',
   ): Promise<{ resumeJson: ResumeData; threadId: string }> {
+    // Validate user instructions
     if (!userInstructions || !userInstructions.trim()) {
       throw new Error('User instructions are required and cannot be empty');
     }
 
+    // Clean instructions to save tokens (remove double spaces and normalize newlines)
     const fullInstructions = this.cleanText(userInstructions);
+
+    // Generate a unique conversation ID
     const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    // Clean job description to save tokens
     const cleanedJobDescription = this.cleanText(jobDescription);
-    const apiModelId = resolveApiModelId(aiProvider, aiVersion);
 
+    // Call the responses API with JSON schema (no streaming)
+    const response = await this.client.responses.create({
+      model: 'gpt-5',
+      instructions: fullInstructions,
+      input: cleanedJobDescription,
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'resume',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                minLength: 1,
+              },
+              title: {
+                type: 'string',
+                minLength: 1,
+              },
+              contact: {
+                type: 'object',
+                properties: {
+                  address: {
+                    type: 'string',
+                    minLength: 1,
+                  },
+                  email: {
+                    type: 'string',
+                    minLength: 1,
+                  },
+                  phone: {
+                    type: 'string',
+                    minLength: 1,
+                  },
+                  linkedin: {
+                    type: 'string',
+                    minLength: 1,
+                  },
+                },
+                required: ['address', 'email', 'phone', 'linkedin'],
+                additionalProperties: false,
+              },
+              summary: {
+                type: 'string',
+                minLength: 1,
+              },
+              skills: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    category: {
+                      type: 'string',
+                      enum: [
+                        'Backend',
+                        'Frontend',
+                        'Cloud',
+                        'Data',
+                        'Tools',
+                        'Industry',
+                        'Mobile',
+                        'AI',
+                        'DevOps',
+                        'Security',
+                        'Data Engineering',
+                        'Platform',
+                      ],
+                    },
+                    items: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      minItems: 6,
+                    },
+                  },
+                  required: ['category', 'items'], // ✅ must include ALL properties
+                  additionalProperties: false,
+                },
+                minItems: 3,
+              },
+              experience: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    company: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    date_range: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    job_type: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    responsibilities: {
+                      type: 'array',
+                      items: {
+                        type: 'string',
+                      },
+                      minItems: 5,
+                    },
+                    achievements: {
+                      type: 'array',
+                      items: {
+                        type: 'string',
+                      },
+                      minItems: 4,
+                    },
+                    skills: {
+                      type: 'array',
+                      items: {
+                        type: 'string',
+
+                      },
+                      minItems: 3,
+                    },
+                  },
+                  required: [
+                    'title',
+                    'company',
+                    'date_range',
+                    'job_type',
+                    'responsibilities',
+                    'achievements',
+                    'skills',
+                  ],
+                  additionalProperties: false,
+                },
+                minItems: 1,
+              },
+              education: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    degree: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    institution: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    location: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                    date_range: {
+                      type: 'string',
+                      minLength: 1,
+                    },
+                  },
+                  required: ['degree', 'institution', 'location', 'date_range'],
+                  additionalProperties: false,
+                },
+                minItems: 1,
+              },
+              cover_letter: {
+                type: 'string',
+                minLength: 1,
+              },
+            },
+            required: [
+              'name',
+              'title',
+              'contact',
+              'summary',
+              'skills',
+              'experience',
+              'education',
+              'cover_letter',
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    // Get output text from response
+    if (!response.output_text) {
+      throw new Error('No output text received from OpenAI');
+    }
+
+    // Parse the JSON from the response (should be valid JSON due to schema)
     let resumeJson: ResumeData;
-
-    if (aiProvider === 'claude') {
-      resumeJson = await this.generateResumeWithClaude(
-        cleanedJobDescription,
-        fullInstructions,
-        apiModelId,
-      );
-    } else {
-      resumeJson = await this.generateResumeWithOpenAI(
-        cleanedJobDescription,
-        fullInstructions,
-        apiModelId,
+    try {
+      resumeJson = JSON.parse(response.output_text);
+    } catch (error) {
+      throw new Error(
+        `Failed to parse JSON from OpenAI response: ${error.message}. Response: ${response.output_text.substring(0, 200)}`,
       );
     }
+
+    // Filter out empty skill arrays
 
     return {
       resumeJson,
@@ -72,89 +261,20 @@ export class OpenAIService {
     };
   }
 
-  private async generateResumeWithOpenAI(
-    jobDescription: string,
-    instructions: string,
-    model: string,
-  ): Promise<ResumeData> {
-    const response = await this.client.responses.create({
-      model,
-      instructions,
-      input: jobDescription,
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'resume',
-          strict: true,
-          schema: RESUME_JSON_SCHEMA,
-        },
-      },
-    });
-
-    if (!response.output_text) {
-      throw new Error('No output text received from OpenAI');
-    }
-
-    try {
-      return JSON.parse(response.output_text);
-    } catch (error) {
-      throw new Error(
-        `Failed to parse JSON from OpenAI response: ${error.message}. Response: ${response.output_text.substring(0, 200)}`,
-      );
-    }
-  }
-
-  private async generateResumeWithClaude(
-    jobDescription: string,
-    instructions: string,
-    model: string,
-  ): Promise<ResumeData> {
-    if (!this.anthropicClient) {
-      throw new Error(
-        'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in environment.',
-      );
-    }
-
-    const schemaPrompt = `You must respond with valid JSON only, matching this schema exactly:\n${JSON.stringify(RESUME_JSON_SCHEMA)}`;
-
-    const response = await this.anthropicClient.messages.create({
-      model,
-      max_tokens: 16384,
-      system: `${instructions}\n\n${schemaPrompt}`,
-      messages: [
-        {
-          role: 'user',
-          content: jobDescription,
-        },
-      ],
-    });
-
-    const textBlock = response.content.find((block) => block.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      throw new Error('No text output received from Claude');
-    }
-
-    const outputText = textBlock.text.trim();
-    const jsonText = outputText.startsWith('```')
-      ? outputText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
-      : outputText;
-
-    try {
-      return JSON.parse(jsonText);
-    } catch (error) {
-      throw new Error(
-        `Failed to parse JSON from Claude response: ${error.message}. Response: ${outputText.substring(0, 200)}`,
-      );
-    }
-  }
-
+  /**
+   * Parse questions from text and answer them in a single AI call
+   * Extracts valid questions from text and answers them based on resume and job description
+   * @param questionsText The raw text containing questions (may have formatting artifacts)
+   * @param resumeJson The resume JSON
+   * @param jobDescription The job description
+   * @param customPrompt Optional custom prompt to use instead of default
+   * @returns Array of {question: string, answer: string} objects
+   */
   async parseAndAnswerQuestions(
     questionsText: string,
     resumeJson: Record<string, any>,
     jobDescription: string,
     customPrompt?: string,
-    aiProvider: AiProvider = 'openai',
-    aiVersion: string = 'gpt-4.1-mini',
   ): Promise<Array<{ question: string; answer: string }>> {
     const instructions =
       customPrompt ||
@@ -172,39 +292,22 @@ export class OpenAIService {
     const cleanedInstructions = this.cleanText(instructions);
     const cleanedQuestionsText = this.cleanText(questionsText);
 
+    // Exclude cover_letter from resume to save tokens
     const resumeCopy: Record<string, any> = { ...(resumeJson || {}) };
     if (resumeCopy.cover_letter) {
       delete resumeCopy.cover_letter;
     }
 
+    // Use compact JSON stringify (no pretty printing) to save tokens
     const compactResumeJson = JSON.stringify(resumeCopy);
+
+    // Include JD and filtered resume inside the instructions to keep the API input minimal
     const fullInstructions = `${cleanedInstructions} Job Description: ${cleanedJobDescription} Resume Information: ${compactResumeJson}`;
-    const apiModelId = resolveApiModelId(aiProvider, aiVersion);
 
-    if (aiProvider === 'claude') {
-      return this.parseAndAnswerQuestionsWithClaude(
-        cleanedQuestionsText,
-        fullInstructions,
-        apiModelId,
-      );
-    }
-
-    return this.parseAndAnswerQuestionsWithOpenAI(
-      cleanedQuestionsText,
-      fullInstructions,
-      apiModelId,
-    );
-  }
-
-  private async parseAndAnswerQuestionsWithOpenAI(
-    questionsText: string,
-    instructions: string,
-    model: string,
-  ): Promise<Array<{ question: string; answer: string }>> {
     const response = await this.client.responses.create({
-      model,
-      instructions,
-      input: questionsText,
+      model: 'gpt-5',
+      instructions: fullInstructions,
+      input: cleanedQuestionsText,
       text: {
         format: {
           type: 'json_schema',
@@ -244,54 +347,11 @@ export class OpenAIService {
       throw new Error('No output text received from OpenAI');
     }
 
-    return this.parseQuestionsResponse(response.output_text);
-  }
-
-  private async parseAndAnswerQuestionsWithClaude(
-    questionsText: string,
-    instructions: string,
-    model: string,
-  ): Promise<Array<{ question: string; answer: string }>> {
-    if (!this.anthropicClient) {
-      throw new Error(
-        'Anthropic API key is not configured. Set ANTHROPIC_API_KEY in environment.',
-      );
-    }
-
-    const schemaPrompt =
-      'Respond with valid JSON only in this format: {"questions_and_answers": [{"question": "...", "answer": "..."}]}';
-
-    const response = await this.anthropicClient.messages.create({
-      model,
-      max_tokens: 8192,
-      system: `${instructions}\n\n${schemaPrompt}`,
-      messages: [
-        {
-          role: 'user',
-          content: questionsText,
-        },
-      ],
-    });
-
-    const textBlock = response.content.find((block) => block.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      throw new Error('No text output received from Claude');
-    }
-
-    const outputText = textBlock.text.trim();
-    const jsonText = outputText.startsWith('```')
-      ? outputText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
-      : outputText;
-
-    return this.parseQuestionsResponse(jsonText);
-  }
-
-  private parseQuestionsResponse(
-    outputText: string,
-  ): Array<{ question: string; answer: string }> {
     try {
-      const parsed = JSON.parse(outputText)['questions_and_answers'];
+      // Parse the JSON from the response (should be valid JSON due to schema)
+      const parsed = JSON.parse(response.output_text)['questions_and_answers'];
       if (Array.isArray(parsed)) {
+        // Filter and clean the results
         return parsed
           .filter(
             (qa) =>
@@ -308,7 +368,7 @@ export class OpenAIService {
       throw new Error('Invalid response format: expected array');
     } catch (error) {
       throw new Error(
-        `Failed to parse JSON from AI response: ${error.message}. Response: ${outputText.substring(0, 200)}`,
+        `Failed to parse JSON from OpenAI response: ${error.message}. Response: ${response.output_text.substring(0, 200)}`,
       );
     }
   }
